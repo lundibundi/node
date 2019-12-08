@@ -766,6 +766,7 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
   // If we are writing we will get to make the callback in OnStreamAfterWrite.
   if ((flags_ & SESSION_STATE_WRITE_IN_PROGRESS) == 0) {
     Debug(this, "make done session callback");
+    HandleScope scope(env()->isolate());
     MakeCallback(env()->ondone_string(), 0, nullptr);
     if (stream_ != nullptr) stream_->ReadStart();
   }
@@ -1569,12 +1570,12 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
       !(flags_ & SESSION_STATE_WRITE_IN_PROGRESS) &&
       (nghttp2_session_want_read(session_) ||
        (flags_ & SESSION_STATE_CLOSED) != 0)) {
-    Debug(this, "OnStreamAfterWrite read start");
     flags_ &= ~SESSION_STATE_READING_STOPPED;
     stream_->ReadStart();
   }
 
   if ((flags_ & SESSION_STATE_CLOSED) != 0) {
+    HandleScope scope(env()->isolate());
     MakeCallback(env()->ondone_string(), 0, nullptr);
     return;
   }
