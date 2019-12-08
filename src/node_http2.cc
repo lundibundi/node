@@ -767,6 +767,7 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
   if ((flags_ & SESSION_STATE_WRITE_IN_PROGRESS) == 0) {
     Debug(this, "make done session callback");
     MakeCallback(env()->ondone_string(), 0, nullptr);
+    if (stream_ != nullptr) stream_->ReadStart();
   }
 
   // If there are outstanding pings, those will need to be canceled, do
@@ -1566,7 +1567,9 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
 
   if ((flags_ & SESSION_STATE_READING_STOPPED) &&
       !(flags_ & SESSION_STATE_WRITE_IN_PROGRESS) &&
-      nghttp2_session_want_read(session_)) {
+      (nghttp2_session_want_read(session_) ||
+       (flags_ & SESSION_STATE_CLOSED) != 0)) {
+    Debug(this, "OnStreamAfterWrite read start");
     flags_ &= ~SESSION_STATE_READING_STOPPED;
     stream_->ReadStart();
   }
